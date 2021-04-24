@@ -1,65 +1,58 @@
-# pg_vacuum
+# Global Temporary Tables For PostgreSQL
 
-This python program determines whether a vacuum/analyze/freeze should be done and if so, which one.
-
-(c) 2018-2021 SQLEXEC LLC
+(c) 2021 SQLEXEC LLC
 <br/>
 GNU V3 and MIT licenses are conveyed accordingly.
 <br/>
 Bugs can be reported @ michaeldba@sqlexec.com
 
+The main goal of this repo is to provide Oracle-like functionality with respect to Global Temporary Tables.  This comes into play a lot when migrating from Oracle to PostgreSQL.  The SQL file attached to this repo contains all that is needed to simulate Oracle GTTs in in PostgreSQL.  
+
 
 ## History
-The first version of this program was created in 2018.  
-Program renamed from optimize_db.py to pg_vacuum.py (December 2020)
+This repo is based on previous work done by Alexey Yakovlev, but which has not been updated since 2018.
+https://www.codeproject.com/Articles/1176045/Oracle-style-global-temporary-tables-for-PostgreSQ
+https://github.com/yallie/pg_global_temp_tables
+
+I have made changes and added new features:
+* temp table is not dropped after usage.  Instead, rows are simply truncated via ON COMMIT DELETE ROWS.
+* user has a choice to make the temp table persistency apply within a transaction or within a connection session.
+
 
 ## Overview
-This program is useful to identify and vacuum tables.  Most inputs are optional, and either an optional parameter is not used or a default value is used if not provided.  That means you can override internal parameters by specifying them on the command line.  Here are the parameters:
-<br/>
-`-H --host`              host name
-<br/>
-`-d --dbname`            database name
-<br/>
-`-p --dbport`            database port
-<br/>
-`-U --dbuser`            database user
-<br/>
-`-s --maxsize`           max table size that will be considered
-<br/>
-`-y --analyzemaxdays`    Analyzes older than this will be considered
-<br/>
-`-x --vacuummaxdays`     Vacuums older than this will be considered
-<br/>
-`-t --mindeadtups`       minimum dead tups before considering a vacuum
-<br/>
-`-m --schema`            if provided, perform actions only on this schema
-<br/>
-`-z --pctfreeze`         specifies how close to wraparound before FREEZE is done.
-<br/>
-`-f --freeze`            perform freeze if necessary
-<br/>
-`-r --dryrun`            do a dry run for analysis before actually running it.
-<br/>
-`-q --inquiry`           show stats to validate run.  Best used with dryrun. Values: "all" | "found" | not specified
-<br/>
-`-i --ignoreparts`       ignore partitioned tables
-<br/>
-`-a --async`             run async jobs ignoring thresholds
-<br/>
-<br/>
+There is currently a better solution for PostgreSQL global temporary tables written by Gilles Darold and available as a PostgreSQL extension.  Unfortunately, that does not help when working with PostgreSQL as a service, DBAAS.  There is no known cloud provider for PostgreSQL that supports this extension at this time.  Hence, the perceived need for this repo to fill in the gap.
 
 ## Requirements
-1. python 2.7 or above
-2. python packages: psycopg2
+None Required.  Just apply the 2 function definitions to the public schema of a target database.
 <br/>
 
 ## Assumptions
-1. Only when a table is within 25 million of reaching the wraparound threshold is it considered a FREEZE candidate. 
-2. By default, catalog tables are ignored unless specified explicitly with the --schema option.
+None at this time.
 <br/>
 
 ## Examples
-pg_vacuum.py -H localhost -d testing -p 5432 -U postgres --maxsize 40000000 -y 10 -x 2  --mindeadtups 1000 --schema public --dryrun
+The following commands will create 2 GTTs in a user-defined schema.  One is persistent within a transaction only, and the other one is persistent across all transactions within an existing connection.  This example simply copies info for active connections from the pg_stat_activity table.
 <br/><br/>
-pg_vacuum.py -H localhost -d testing -p 5432 -U postgres -s 400000000000 -y 1 -t 1000 -m public --pctfreeze 90 --freeze
-<br/>
+set search_path = testing, public;
+set client_min_messages = error;
+
+Make sure GTTs don't already exist.
+SELECT drop_permanent_temp_table(p_table_name => 'globaltemp1',p_schema => 'testing');
+SELECT drop_permanent_temp_table(p_table_name => 'globaltemp2',p_schema => 'testing');
+
+BEGIN;
+CREATE TEMPORARY TABLE IF NOT EXISTS globaltemp1(pid integer PRIMARY KEY, datname name, usename name, state text, query text) ON COMMIT DELETE ROWS;
+SELECT create_permanent_temp_table(p_schema => 'testing', p_table_name => 'globaltemp1', p_deleterows => True);   
+END;
+
+BEGIN;
+CREATE TEMPORARY TABLE IF NOT EXISTS globaltemp2(pid integer PRIMARY KEY, datname name, usename name, state text, query text) ON COMMIT PRESERVE ROWS;
+SELECT create_permanent_temp_table(p_schema => 'testing', p_table_name => 'globaltemp2', p_deleterows => False);   
+END;
+
+GRANT ALL on testing.globaltemp1 TO public;
+GRANT ALL on testing.globaltemp2 TO public;
+
+
+
+
