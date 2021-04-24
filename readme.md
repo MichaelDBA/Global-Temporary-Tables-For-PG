@@ -7,7 +7,7 @@ GNU V3 and MIT licenses are conveyed accordingly.
 Bugs can be reported @ michaeldba@sqlexec.com
 
 The main goal of this repo is to provide Oracle-like functionality with respect to Global Temporary Tables.  This comes into play a lot when migrating from Oracle to PostgreSQL.  The SQL file attached to this repo contains all that is needed to simulate Oracle GTTs in in PostgreSQL.  
-
+<br/>
 
 ## History
 This repo is based on previous work done by Alexey Yakovlev, but which has not been updated since 2018.
@@ -17,11 +17,14 @@ https://github.com/yallie/pg_global_temp_tables
 I have made changes and added new features:
 * temp table is not dropped after usage.  Instead, rows are simply truncated via ON COMMIT DELETE ROWS.
 * user has a choice to make the temp table persistency apply within a transaction or within a connection session.
-
+<br/>
 
 ## Overview
 There is currently a better solution for PostgreSQL global temporary tables written by Gilles Darold and available as a PostgreSQL extension.  Unfortunately, that does not help when working with PostgreSQL as a service, DBAAS.  There is no known cloud provider for PostgreSQL that supports this extension at this time.  Hence, the perceived need for this repo to fill in the gap.
-
+<br/>
+How does it work? What's created is 3 things: a view, a function, and a trigger function.  The view calls the function.  The function creates the temp table if not already created, and the INSTEAD trigger on the function populates the underlying, hidden temp table.
+<br/>
+<br/>
 ## Requirements
 None Required.  Just apply the 2 function definitions to the public schema of a target database.
 <br/>
