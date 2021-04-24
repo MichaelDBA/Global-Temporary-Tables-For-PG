@@ -37,8 +37,8 @@ None Required.  Just apply the 2 function definitions to the public schema of a 
 None at this time.
 <br/>
 
-## Example 1: Create the user-defined GTTs
-The following commands will create 2 GTTs in a user-defined schema.  One is persistent within a transaction only, and the other one is persistent across all transactions within an existing connection.  This example simply copies info for active connections from the pg_stat_activity table.
+## Create the user-defined GTTs
+The following commands will create 2 GTTs in the same, user-defined schema.  One is persistent within a transaction only, and the other one is persistent across all transactions within an existing connection.  This example simply copies info for active connections from the pg_stat_activity table.
 <br/><br/>
 `set search_path = testing, public;`<br/>
 `set client_min_messages = error;`
@@ -60,7 +60,7 @@ Make sure GTTs don't already exist.<br/>
 `GRANT ALL on testing.globaltemp1 TO public;`<br/>
 `GRANT ALL on testing.globaltemp2 TO public;`
 <br/><br/>
-## Example 2: Work with the transaction persistent user-defined GTT
+## Example: Work with the transaction persistent user-defined GTT
 Show search path<br/>
 `show search_path;`<br/>
    search_path<br/>
