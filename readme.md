@@ -36,26 +36,26 @@ None at this time.
 ## Examples
 The following commands will create 2 GTTs in a user-defined schema.  One is persistent within a transaction only, and the other one is persistent across all transactions within an existing connection.  This example simply copies info for active connections from the pg_stat_activity table.
 <br/><br/>
-set search_path = testing, public;
-set client_min_messages = error;
-
+`set search_path = testing, public;`
+`set client_min_messages = error;`
+<br/><br/>
 Make sure GTTs don't already exist.
-SELECT drop_permanent_temp_table(p_table_name => 'globaltemp1',p_schema => 'testing');
-SELECT drop_permanent_temp_table(p_table_name => 'globaltemp2',p_schema => 'testing');
-
-BEGIN;
-CREATE TEMPORARY TABLE IF NOT EXISTS globaltemp1(pid integer PRIMARY KEY, datname name, usename name, state text, query text) ON COMMIT DELETE ROWS;
-SELECT create_permanent_temp_table(p_schema => 'testing', p_table_name => 'globaltemp1', p_deleterows => True);   
-END;
-
-BEGIN;
-CREATE TEMPORARY TABLE IF NOT EXISTS globaltemp2(pid integer PRIMARY KEY, datname name, usename name, state text, query text) ON COMMIT PRESERVE ROWS;
-SELECT create_permanent_temp_table(p_schema => 'testing', p_table_name => 'globaltemp2', p_deleterows => False);   
-END;
-
-GRANT ALL on testing.globaltemp1 TO public;
-GRANT ALL on testing.globaltemp2 TO public;
-
+`SELECT drop_permanent_temp_table(p_table_name => 'globaltemp1',p_schema => 'testing');`
+`SELECT drop_permanent_temp_table(p_table_name => 'globaltemp2',p_schema => 'testing');`
+<br/><br/>
+`BEGIN;`
+`CREATE TEMPORARY TABLE IF NOT EXISTS globaltemp1(pid integer PRIMARY KEY, datname name, usename name, state text, query text) ON COMMIT DELETE ROWS;`
+`SELECT create_permanent_temp_table(p_schema => 'testing', p_table_name => 'globaltemp1', p_deleterows => True);`   
+`END;`
+<br/><br/>
+`BEGIN;
+`CREATE TEMPORARY TABLE IF NOT EXISTS globaltemp2(pid integer PRIMARY KEY, datname name, usename name, state text, query text) ON COMMIT PRESERVE ROWS;`
+`SELECT create_permanent_temp_table(p_schema => 'testing', p_table_name => 'globaltemp2', p_deleterows => False);`   
+`END;`
+<br/><br/>
+`GRANT ALL on testing.globaltemp1 TO public;`
+`GRANT ALL on testing.globaltemp2 TO public;`
+<br/><br/>
 
 
 
