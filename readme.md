@@ -116,4 +116,4 @@ As expected, the GTT still exists but it is empty again.<br/>
 -----+---------+---------+-------+-------<br/>
 (0 rows)
 <br/><br/>
-
+If we were working with a session persistent GTT, then any changes we make to the GTT will be reflected regardless of whether we are within a transaction or not.
