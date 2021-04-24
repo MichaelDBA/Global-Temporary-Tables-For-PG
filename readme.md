@@ -103,7 +103,7 @@ INSERT 0 1
 <br/><br/>
 `select * from globaltemp1;`<br/>
  pid  |   datname   | usename  | state  |                                                       query<br/>
-------+-------------+----------+--------+------------------------------------------------------------------------------------------------------------------<br/>
+-----+-------------+----------+--------+------------------------------------------------------------------------------------------------------------------<br/>
  2264 | gtt_testing | postgres | active | INSERT INTO globaltemp1 (select pid, datname, usename, state, query from pg_stat_activity where state = 'active');<br/>
 (1 row)
 <br/><br/>
