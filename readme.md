@@ -48,7 +48,7 @@ Make sure GTTs don't already exist.<br/>
 `SELECT create_permanent_temp_table(p_schema => 'testing', p_table_name => 'globaltemp1', p_deleterows => True);`<br/>
 `END;`
 <br/><br/>
-`BEGIN;<br/>
+`BEGIN;`<br/>
 `CREATE TEMPORARY TABLE IF NOT EXISTS globaltemp2(pid integer PRIMARY KEY, datname name, usename name, state text, query text) ON COMMIT PRESERVE ROWS;`<br/>
 `SELECT create_permanent_temp_table(p_schema => 'testing', p_table_name => 'globaltemp2', p_deleterows => False);`<br/>
 `END;`
