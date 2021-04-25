@@ -5,7 +5,11 @@
 GNU V3 and MIT licenses are conveyed accordingly.
 <br/>
 Bugs can be reported @ michaeldba@sqlexec.com
-
+<br/>
+<div class="text-purple">
+  This text is purple, <a href="#" class="text-inherit">including the link</a>
+</div>
+<br/>
 The main goal of this repo is to provide Oracle-like functionality with respect to Global Temporary Tables.  This comes into play a lot when migrating from Oracle to PostgreSQL.  The SQL file attached to this repo contains all that is needed to simulate Oracle GTTs in in PostgreSQL.  
 <br/>
 
