@@ -28,7 +28,7 @@ See https://github.com/darold/pgtt
 <br/><br/>
 Unfortunately, that does not help when working with PostgreSQL as a service, DBAAS.  There is no known cloud provider for PostgreSQL that supports this extension at this time.  Hence, the perceived need for this repo to fill in the gap.
 <br/><br/>
-How does it work? When you invoke the public function, create_permanent_temp_table(), it creates 3 things: a view, a function, and a trigger function.  The view calls the function. The view selects rows from the function, and we can make it updatable by means of the instead of trigger.  You never see the actual temp table, since it is actually, the view name concatenated with "$tmp".
+How does it work? When you invoke the public function, create_permanent_temp_table(), it creates 3 things in the user schema: a view, a function, and a trigger function.  The view calls the function. The view selects rows from the function, and we can make it updatable by means of the instead of trigger.  You never see the actual temp table, since it is actually, the view name concatenated with "$tmp".
 <br/>
 <br/>
 ## Requirements
