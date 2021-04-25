@@ -20,7 +20,7 @@ I have made changes and added new features:
 <br/>
 
 ## Overview
-There are some differences between Oracle and PostgreSQL temporary tables. Oracle temporary tables are permanent, so their structure is static and visible to all users, and the content is temporary. PostgreSQL temporary tables are dropped either at the end of a session or at the end of a transaction. Oracle temporary tables are always defined within a user-specified schema. PostgreSQL temporary tables cannot be defined within user's schema, they always use a special temporary schema instead.  Most of these distinctions are overcome with the PostgreSQL custom, procedural code.  For instance when you first access a temporary table in a session, the temporary table is created behind the scenes to give the appearance of being persistent across connection sessions.
+There are some differences between Oracle and PostgreSQL temporary tables. Oracle temporary tables are permanent, so their structure is static and visible to all users, and the content is temporary. PostgreSQL temporary tables are truncated, not deleted, at the end of a session or at the end of a transaction. Oracle temporary tables are always defined within a user-specified schema. PostgreSQL temporary tables cannot be defined within user's schema, they always use a special temporary schema instead.  Most of these distinctions are overcome with the PostgreSQL custom, procedural code.  For instance when you first access a temporary table in a session, the temporary table is created behind the scenes to give the appearance of being persistent across connection sessions.
 <br/><br/>
 There is currently a better solution for PostgreSQL global temporary tables written by Gilles Darold and available as a PostgreSQL extension. 
 <br/>
