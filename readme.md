@@ -46,21 +46,21 @@ The following commands will create 2 GTTs in the same, user-defined schema.  One
 `set client_min_messages = error;`
 <br/><br/>
 Make sure GTTs don't already exist.<br/>
-`SELECT drop_permanent_temp_table(p_table_name => 'globaltemp1',p_schema => 'testing');`<br/>
-`SELECT drop_permanent_temp_table(p_table_name => 'globaltemp2',p_schema => 'testing');`
+`SELECT drop_permanent_temp_table(p_table_name => 'globaltemptran',p_schema => 'testing');`<br/>
+`SELECT drop_permanent_temp_table(p_table_name => 'globaltempconn',p_schema => 'testing');`
 <br/><br/>
 `BEGIN;`<br/>
-`CREATE TEMPORARY TABLE IF NOT EXISTS globaltemp1(pid integer PRIMARY KEY, datname name, usename name, state text, query text) ON COMMIT DELETE ROWS;`<br/>
-`SELECT create_permanent_temp_table(p_schema => 'testing', p_table_name => 'globaltemp1', p_deleterows => True);`<br/>
+`CREATE TEMPORARY TABLE IF NOT EXISTS globaltemptran(pid integer PRIMARY KEY, datname name, usename name, state text, query text) ON COMMIT DELETE ROWS;`<br/>
+`SELECT create_permanent_temp_table(p_schema => 'testing', p_table_name => 'globaltemptran', p_deleterows => True);`<br/>
 `END;`
 <br/><br/>
 `BEGIN;`<br/>
-`CREATE TEMPORARY TABLE IF NOT EXISTS globaltemp2(pid integer PRIMARY KEY, datname name, usename name, state text, query text) ON COMMIT PRESERVE ROWS;`<br/>
-`SELECT create_permanent_temp_table(p_schema => 'testing', p_table_name => 'globaltemp2', p_deleterows => False);`<br/>
+`CREATE TEMPORARY TABLE IF NOT EXISTS globaltempconn(pid integer PRIMARY KEY, datname name, usename name, state text, query text) ON COMMIT PRESERVE ROWS;`<br/>
+`SELECT create_permanent_temp_table(p_schema => 'testing', p_table_name => 'globaltempconn', p_deleterows => False);`<br/>
 `END;`
 <br/><br/>
-`GRANT ALL on testing.globaltemp1 TO public;`<br/>
-`GRANT ALL on testing.globaltemp2 TO public;`
+`GRANT ALL on testing.globaltemptran TO public;`<br/>
+`GRANT ALL on testing.globaltempconn TO public;`
 <br/><br/>
 ## Example: Work with the transaction persistent user-defined GTT
 Show search path<br/>
@@ -70,9 +70,9 @@ Show search path<br/>
  "$user", public
 <br/><br/>
 Query 1st temp table<br/>
-`select * from globaltemp1;`<br/>
-ERROR:  relation "globaltemp1" does not exist<br/>
-LINE 1: select * from globaltemp1;<br/>
+`select * from globaltemptran;`<br/>
+ERROR:  relation "globaltemptran" does not exist<br/>
+LINE 1: select * from globaltemptran;<br/>
                       ^
 <br/><br/>                      
 Search path needs to be modified to point to user schema<br/>
@@ -80,17 +80,17 @@ Search path needs to be modified to point to user schema<br/>
 SET
 <br/><br/>
 See if we can see the GTT now<br/>
-`select * from globaltemp1;`<br/>
+`select * from globaltemptran;`<br/>
  pid | datname | usename | state | query<br/>
 -----+---------+---------+-------+-------<br/>
 (0 rows)
 <br/><br/>
 Put something in the GTT<br/>
-`INSERT INTO globaltemp1 (select pid, datname, usename, state, query from pg_stat_activity where state = 'active');`<br/>
+`INSERT INTO globaltemptran (select pid, datname, usename, state, query from pg_stat_activity where state = 'active');`<br/>
 INSERT 0 1
 <br/><br/>
 1 row was inserted, let's check our GTT again<br/>
-`select * from globaltemp1;`<br/>
+`select * from globaltemptran;`<br/>
  pid | datname | usename | state | query<br/>
 -----+---------+---------+-------+-------<br/>
 (0 rows)
@@ -100,10 +100,10 @@ Let's modify our temp table and query it again within a transaction.<br/>
 `BEGIN;`<br/>
 BEGIN
 <br/><br/>
-`INSERT INTO globaltemp1 (select pid, datname, usename, state, query from pg_stat_activity where state = 'active');`<br/>
+`INSERT INTO globaltemptran (select pid, datname, usename, state, query from pg_stat_activity where state = 'active');`<br/>
 INSERT 0 1
 <br/><br/>
-`select * from globaltemp1;`<br/>
+`select * from globaltemptran;`<br/>
  pid  |   datname   | usename  | state  |                                                       query<br/>
 -----+-------------+----------+--------+------------------------------------------------------------------------------------------------------------------<br/>
  2264 | gtt_testing | postgres | active | INSERT INTO globaltemp1 (select pid, datname, usename, state, query from pg_stat_activity where state = 'active');<br/>
@@ -113,7 +113,7 @@ INSERT 0 1
 COMMIT
 <br/><br/>
 As expected, the GTT still exists but it is empty again.<br/>
-`select * from globaltemp1;`<br/>
+`select * from globaltemptran;`<br/>
  pid | datname | usename | state | query<br/>
 -----+---------+---------+-------+-------<br/>
 (0 rows)
