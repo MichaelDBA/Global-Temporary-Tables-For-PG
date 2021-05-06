@@ -17,12 +17,16 @@ declare
         v_trigger_name varchar := p_table_name || '$iud';
         v_final_statement text;
         v_table_statement text; -- create temporary table...
+        v_index_statement text; -- create indexes for temp table if available
         v_all_column_list text; -- id, name, ...
         v_new_column_list text; -- new.id, new.name, ...
         v_assignment_list text; -- id = new.id, name = new.name, ...
         v_cols_types_list text; -- id bigint, name varchar, ...
         v_old_column_list text; -- id = old.id, name = old.name, ...
         v_old_pkey_column text; -- id = old.id
+        pos1 INT;
+        pos2 INT;
+        aschema text;
 begin
         -- check if the temporary table exists
         if not exists(select 1 from pg_class where relname = p_table_name and relpersistence = 't') then
@@ -48,24 +52,24 @@ begin
                 where cc.contype = 'p'
                 group by cc.conrelid, cc.conname
         )
-        -- select format(E'\tcreate temporary table if not exists %I\n\t(\n%s%s\n\t)\n\ton commit drop;',
-        -- select format(E'\tcreate temporary table if not exists %I\n\t(\n%s%s\n\t)\n\ton commit delete rows;',
         select format(E'\tcreate temporary table if not exists %I\n\t(\n%s%s\n\t)\n\tON COMMIT',
                 v_table_name,
                 string_agg(
-                        format(E'\t\t%I %s%s',
-                                a.attname,
-                                pg_catalog.format_type(a.atttypid, a.atttypmod),
-                                case when a.attnotnull then ' not null' else '' end
-                        ), E',\n'
-                        order by a.attnum
+			format(E'\t\t%I %s%s%s',
+				a.attname,
+				pg_catalog.format_type(a.atttypid, a.atttypmod),
+				case when a.attnotnull then ' not null' else '' end,
+			        case when a.atthasdef = true then ' default ' || pg_get_expr(d.adbin, d.adrelid) else '' end
+			), E',\n'
+			order by a.attnum
                 ),
                 (select pkey from pkey where pkey.conrelid = c.oid)) as sql
         into v_table_statement
         from pg_catalog.pg_class c
-                join pg_catalog.pg_attribute a on a.attrelid = c.oid and a.attnum > 0
-                join pg_catalog.pg_type t on a.atttypid = t.oid
-        where c.relname = p_table_name and c.relpersistence = 't'
+		join pg_catalog.pg_attribute a on a.attrelid = c.oid and a.attnum > 0
+		left outer join pg_catalog.pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+		join pg_catalog.pg_type t on a.atttypid = t.oid
+	where c.relname = p_table_name and c.relpersistence = 't'
         group by c.oid, c.relname;
 
 	-- MJV CHANGE: allow session life or transaction life
@@ -75,33 +79,52 @@ begin
           v_table_statement := v_table_statement || ' PRESERVE ROWS;';
         END IF;
 
-        -- set client_min_messages to info;        
-        -- RAISE INFO 'table=%', v_table_statement;
-        -- set client_min_messages to error;        
+        set client_min_messages to notice;        
+        -- RAISE NOTICE 'table=%', v_table_statement;
 
-        -- generate the lists of columns
-        select
-                string_agg(a.attname, ', '),
-                string_agg(format('new.%I', a.attname), ', '),
-                string_agg(format('%I = new.%I', a.attname, a.attname), ', '),
-                string_agg(format('%I %s', a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod)), ', '),
-                string_agg(format('%I = old.%I', a.attname, a.attname), ' and ')
-        into
-                v_all_column_list, v_new_column_list, v_assignment_list, v_cols_types_list, v_old_column_list
-        from pg_catalog.pg_class c
-                join pg_catalog.pg_attribute a on a.attrelid = c.oid and a.attnum > 0
-                join pg_catalog.pg_type t on a.atttypid = t.oid
-        where c.relname = p_table_name and c.relpersistence = 't';
+       -- MJV CHANGE: create indexes as part of table statement if available
+       -- NOT WORKING YET since we are querying
+       -- RAISE NOTICE 'p_table_name=%  v_table_name=%', p_table_name, v_table_name;
+       select string_agg(pg_get_indexdef(indexrelid) || ';', E'\n' ) INTO v_index_statement from pg_index where indrelid = p_table_name::regclass;
+       -- need to remove internal schema qualifier from indexdef
+       -- RAISE NOTICE 'indexes before=%', v_index_statement;
+       pos1 := POSITION(' ON pg_temp' IN v_index_statement);
+       pos2 := POSITION('."' IN v_index_statement);
+       select substring(v_index_statement, pos1+3, pos2+1-pos1-3) INTO aschema;
+       v_index_statement := REPLACE(v_index_statement, aschema, ' ');
+       v_index_statement := REPLACE(v_index_statement, p_table_name, v_table_name);
+       v_index_statement := REPLACE(v_index_statement, ' INDEX ', ' INDEX IF NOT EXISTS ');
+      
+       -- RAISE NOTICE 'indexes after =%', v_index_statement;
+       v_table_statement := v_table_statement || E'\n' || v_index_statement;
+       
+       set client_min_messages to error;        
 
-        -- generate the list of primary key columns
-        select string_agg(format('%I = old.%I', a.attname, a.attname), ' and '
-                order by array_position(cc.conkey, a.attnum))
-        into v_old_pkey_column
-        from pg_catalog.pg_constraint cc
-                join pg_catalog.pg_class c on c.oid = cc.conrelid
-                join pg_catalog.pg_attribute a on a.attrelid = cc.conrelid and a.attnum = any(cc.conkey)
-        where cc.contype = 'p' and c.relname = p_table_name and c.relpersistence = 't'
-        group by cc.conrelid, cc.conname;
+	-- generate the lists of columns
+	select
+		string_agg(a.attname, ', '),
+		string_agg(format('%s', case when a.atthasdef = true then 'coalesce(new.' || a.attname || ', ' || pg_get_expr(d.adbin, d.adrelid) || ')' else 'new.' || a.attname end), ', '),
+		string_agg(format('%I = new.%I', a.attname, a.attname), ', '),
+		string_agg(format('%I %s', a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod)), ', '),
+		string_agg(format('%I = old.%I', a.attname, a.attname), ' and ')
+	into
+		v_all_column_list, v_new_column_list, v_assignment_list, v_cols_types_list, v_old_column_list
+	from pg_catalog.pg_class c
+		join pg_catalog.pg_attribute a on a.attrelid = c.oid and a.attnum > 0
+		left outer join pg_catalog.pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+		join pg_catalog.pg_type t on a.atttypid = t.oid
+	where c.relname = p_table_name and c.relpersistence = 't';
+
+	-- generate the list of primary key columns
+	select string_agg(format('%I = old.%I', a.attname, a.attname), ' and ' 
+		order by array_position(cc.conkey, a.attnum))
+	into v_old_pkey_column
+	from pg_catalog.pg_constraint cc
+		join pg_catalog.pg_class c on c.oid = cc.conrelid
+		join pg_catalog.pg_attribute a on a.attrelid = cc.conrelid and a.attnum = any(cc.conkey)
+		left outer join pg_catalog.pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+	where cc.contype = 'p' and c.relname = p_table_name and c.relpersistence = 't'
+	group by cc.conrelid, cc.conname;
 
         -- if primary key is defined, use the primary key columns
         if length(v_old_pkey_column) > 0 then
@@ -158,7 +181,7 @@ begin
         end if;
 end;
 $x$ language plpgsql set client_min_messages to error;\n',
-        p_schema, v_trigger_name, v_table_statement, -- function header
+        p_schema, v_trigger_name, v_table_statement,  -- function header
         v_table_name, v_all_column_list, v_new_column_list, -- insert
         v_table_name, v_assignment_list, v_old_column_list, -- update
         v_table_name, v_old_column_list); -- delete
@@ -179,8 +202,6 @@ create trigger %I
 end;
 $$ language plpgsql set client_min_messages to error;
 
--- --------------------------------------------------------------------
--- --------------------------------------------------------------------
 create or replace function drop_permanent_temp_table(p_table_name varchar, p_schema varchar default null)
 returns void as $$
 declare
@@ -205,11 +226,9 @@ begin
                 p.prosrc like '%pg_global_temp_tables%';
 
         if v_count <> 2 then
-                -- raise exception 'The table %.% does not seem to be persistent temporary table. %', p_schema,
-                raise notice 'The table %.% does not seem to be persistent temporary table. %', p_schema,
+                raise exception 'The table %.% does not seem to be persistent temporary table. %', p_schema,
                         p_table_name, 'The function only supports tables created by pg_global_temp_tables library.'
                         using errcode = 'UTMP2';
-                RETURN;
         end if;
 
         -- generate the drop function statements
