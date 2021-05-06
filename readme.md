@@ -17,6 +17,7 @@ https://github.com/yallie/pg_global_temp_tables
 I have made changes and added new features:
 * temp table is not dropped after usage.  Instead, rows are simply truncated via ON COMMIT DELETE ROWS.
 * user has a choice to make the temp table persistency apply within a transaction or within a connection session.
+* Supports temp table indexes
 <br/>
 
 ## Overview
